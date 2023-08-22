@@ -185,7 +185,7 @@ for (xl in 1:50){
     filter(!(Transect==Buffer)) %>%
     group_by(Transect) %>%
     summarise(overlaps=length(unique(Buffer))) %>%
-    filter(overlaps>1) %>%
+    filter(overlaps>0) %>%
     arrange(desc(overlaps))
   if(dim(overlapcount)[1]>0){exclude<-bind_rows(exclude,overlapcount[1,])}
 }
@@ -614,7 +614,7 @@ ggmap(base) +
   geom_sf(data = st_transform(nests_sf, 3857), color= "darkblue", size=2,
           inherit.aes = F) +
   
-  scale_color_gradient(name = 'Predicted Reed Warbler \n density (ind per ha)', low="white", high="red", guide = "colourbar", limits=c(0.1, 8.1))+
+  scale_color_gradient(name = 'Predicted Reed Warbler \n density (ind per ha)', low="white", high="red", guide = "colourbar", limits=c(0.05, 8.1))+
   
   ### ADD PREDICTED ABUNDANCE SCALE
   #scale_colour_gradient(name = "PIRW \n abundance (ind / ha)", low="grey", high="red", guide = "colourbar", limits=c(0, 20))+
