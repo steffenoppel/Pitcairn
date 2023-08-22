@@ -296,12 +296,22 @@ pan_rose_garden_lan_hib_fern <- pcount(~DAY+Daytime+as.factor(Wind) ~F+L+H+G+RA+
 full <- pcount(~DAY+Daytime+as.factor(Wind) ~F+H+L+G+RA+P+M+Length, data= PIRW_UMF, K=30,mixture="P",se=T)
 pan_rose_garden_hib_fern <- pcount(~DAY+Daytime+as.factor(Wind) ~F+H+G+RA+P+M+Length, data= PIRW_UMF, K=20,mixture="P",se=T)
 
+### AIC MODEL TABLE COMPARING THESE MODELS
+fl <- fitList(null,garden,fern,hibiscus,roseapple,lantana,pandanus,pan_rose,pan_rose_garden,pan_rose_garden_lan,pan_rose_garden_lan_fern,pan_rose_garden_lan_hib,pan_rose_garden_lan_hib_fern,full,pan_rose_garden_hib_fern)
+ms <- modSel(fl, nullmod="null")
+ms
+
+fwrite(ms@Full,"C:\\Users\\steffenoppel\\OneDrive - THE ROYAL SOCIETY FOR THE PROTECTION OF BIRDS\\STEFFEN\\MANUSCRIPTS\\in_prep\\PIRW\\TABLES1.csv")
+# fwrite(ms@Full,"C:\\STEFFEN\\OneDrive - THE ROYAL SOCIETY FOR THE PROTECTION OF BIRDS\\STEFFEN\\MANUSCRIPTS\\in_prep\\PIRW\\TABLES1.csv")
+
+summary(full)
+
 
 ### #################################################################################################
 ### GOODNESS OF FIT TEST FOR FULL MODEL
 ### #################################################################################################
 ### requires re-fitting model with K=30 to avoid mysterious error
-### this runs 40 min and yields c-hat = 1.31 and p =0.0002
+### this runs 40 min and yields c-hat = 1.23 and p =0.026
 # GOF<-Nmix.gof.test(full,nsim=5000)
 
 # 
@@ -318,8 +328,8 @@ pan_rose_garden_hib_fern <- pcount(~DAY+Daytime+as.factor(Wind) ~F+H+G+RA+P+M+Le
 #   return(out)}
 # 
 # # calculation with unmarked::parboot
-(pb <- parboot(full, fitstats, nsim = 5000, report = TRUE,
-               method = "nonparboot")) ## prob of 0.9 is ok
+# (pb <- parboot(full, fitstats, nsim = 5000, report = TRUE,
+#                method = "nonparboot")) ## prob of 0.9 is ok
 # 
 # 
 # 
@@ -341,16 +351,41 @@ pan_rose_garden_hib_fern <- pcount(~DAY+Daytime+as.factor(Wind) ~F+H+G+RA+P+M+Le
 # t_B = Vector of bootstrap samples
 # 
 # 
-### AIC MODEL TABLE COMPARING THESE MODELS
-fl <- fitList(null,garden,fern,hibiscus,roseapple,lantana,pandanus,pan_rose,pan_rose_garden,pan_rose_garden_lan,pan_rose_garden_lan_fern,pan_rose_garden_lan_hib,pan_rose_garden_lan_hib_fern,full,pan_rose_garden_hib_fern)
-ms <- modSel(fl, nullmod="null")
-ms
 
-fwrite(ms@Full,"C:\\Users\\steffenoppel\\OneDrive - THE ROYAL SOCIETY FOR THE PROTECTION OF BIRDS\\STEFFEN\\MANUSCRIPTS\\in_prep\\PIRW\\TABLES1.csv")
-# fwrite(ms@Full,"C:\\STEFFEN\\OneDrive - THE ROYAL SOCIETY FOR THE PROTECTION OF BIRDS\\STEFFEN\\MANUSCRIPTS\\in_prep\\PIRW\\TABLES1.csv")
+#### ALTERNATIVE APPROACH USING QCV from DUARTE et al 2018
+# fit GLMM
+head(ALLDAT)
+GOFdat<-ALLDAT %>%
+  left_join(transects, by="Transect") %>% 
+  mutate(Length = pmap(list(a = Long_start, 
+                            b = Lat_start, 
+                            x = Long_end,
+                            y = Lat_end), 
+                       ~ distRhumb(c(..1, ..2), c(..3, ..4)))) %>%
+  mutate(Length=as.numeric(Length)) %>%
+  mutate(DAY=scale(DAY)[,1]) %>%
+  mutate(Daytime=scale(Daytime)[,1]) %>%
+  mutate(Length=scale(Length)[,1]) %>%
+  mutate(G=scale(G)[,1]) %>%
+  mutate(RA=scale(RA)[,1]) %>%
+  mutate(L=scale(L)[,1]) %>%
+  mutate(B=scale(B)[,1]) %>%
+  mutate(H=scale(H)[,1]) %>%
+  mutate(F=scale(F)[,1]) 
 
-summary(full)
-summaryOD(full)
+
+library(lme4)
+meanCount=round(mean(as.vector(GOFdat$N_birds)),digits=4)
+mixedModel=glmer(N_birds~1+Length+Daytime+DAY+G+RA+H+L+(1|Transect),data=GOFdat,family="poisson")
+resVar=round(attr(VarCorr(mixedModel)$Transect,"stddev")^2,digits=4) # extract the residual variance
+quasiCV=round(sqrt(resVar)/meanCount,digits=4) # quasi coefficient of variation
+quasiCV
+
+# mixedModel=lmer(N_birds~1+Length+Daytime+DAY+G+RA+H+L+(1|Transect),data=GOFdat,REML=F)
+# resVar=round(attr(VarCorr(mixedModel),"sc")^2,digits=4) # extract the residual variance
+# quasiCV=round(sqrt(resVar)/meanCount,digits=4) # quasi coefficient of variation
+
+
 
 
 
