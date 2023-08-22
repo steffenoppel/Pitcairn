@@ -293,13 +293,14 @@ pan_rose_garden_lan <- pcount(~DAY+Daytime+as.factor(Wind) ~L+G+RA+P+Length, dat
 pan_rose_garden_lan_fern <- pcount(~DAY+Daytime+as.factor(Wind) ~L+F+G+RA+P+Length, data= PIRW_UMF, K=20,mixture="P",se=T)
 pan_rose_garden_lan_hib <- pcount(~DAY+Daytime+as.factor(Wind) ~L+H+G+RA+P+Length, data= PIRW_UMF, K=20,mixture="P",se=T)
 pan_rose_garden_lan_hib_fern <- pcount(~DAY+Daytime+as.factor(Wind) ~F+L+H+G+RA+P+Length, data= PIRW_UMF, K=20,mixture="P",se=T)
-full <- pcount(~DAY+Daytime+as.factor(Wind) ~F+H+L+G+RA+P+M+Length, data= PIRW_UMF, K=20,mixture="P",se=T)
+full <- pcount(~DAY+Daytime+as.factor(Wind) ~F+H+L+G+RA+P+M+Length, data= PIRW_UMF, K=30,mixture="P",se=T)
 pan_rose_garden_hib_fern <- pcount(~DAY+Daytime+as.factor(Wind) ~F+H+G+RA+P+M+Length, data= PIRW_UMF, K=20,mixture="P",se=T)
 
 
 ### #################################################################################################
 ### GOODNESS OF FIT TEST FOR FULL MODEL
 ### #################################################################################################
+### requires re-fitting model with K=30 to avoid mysterious error
 ### this runs 40 min and yields c-hat = 1.31 and p =0.0002
 # GOF<-Nmix.gof.test(full,nsim=5000)
 
@@ -317,27 +318,27 @@ pan_rose_garden_hib_fern <- pcount(~DAY+Daytime+as.factor(Wind) ~F+H+G+RA+P+M+Le
 #   return(out)}
 # 
 # # calculation with unmarked::parboot
-# (pb <- parboot(full, fitstats, nsim = 5000, report = TRUE, 
-#                method = "nonparboot")) ## prob of 0.9 is ok
+(pb <- parboot(full, fitstats, nsim = 5000, report = TRUE,
+               method = "nonparboot")) ## prob of 0.9 is ok
 # 
 # 
 # 
-# # Call: parboot(object = full, statistic = fitstats, nsim = 5000, report = TRUE, method = "nonparboot")
-# # 
-# # Parametric Bootstrap Statistics:
-# #   t0 mean(t0 - t_B) StdDev(t0 - t_B) Pr(t_B > t0)
-# # SSE          946            203             73.1       0.0046
-# # Chisq        502            120             28.9       0.0006
-# # freemanTukey 188             36             10.6       0.0008
-# # 
-# # t_B quantiles:
-# #   0% 2.5% 25% 50% 75% 97.5% 100%
-# # SSE          519  610 693 741 792   896 1045
-# # Chisq        289  330 362 381 400   442  600
-# # freemanTukey 113  132 145 152 159   174  194
-# # 
-# # t0 = Original statistic computed from data
-# # t_B = Vector of bootstrap samples
+# Call: parboot(object = full, statistic = fitstats, nsim = 5000, report = TRUE, method = "nonparboot")
+# 
+# Parametric Bootstrap Statistics:
+#   t0 mean(t0 - t_B) StdDev(t0 - t_B) Pr(t_B > t0)
+# SSE          515.9          121.2            55.53       0.0224
+# Chisq        253.5           47.3            22.84       0.0254
+# freemanTukey  96.2           14.7             7.94       0.0370
+# 
+# t_B quantiles:
+#   0% 2.5% 25% 50% 75% 97.5% 100%
+# SSE          230  296 357 390 430   513  670
+# Chisq        144  166 191 205 220   254  416
+# freemanTukey  55   67  76  81  87    98  113
+# 
+# t0 = Original statistic computed from data
+# t_B = Vector of bootstrap samples
 # 
 # 
 ### AIC MODEL TABLE COMPARING THESE MODELS
