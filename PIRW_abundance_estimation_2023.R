@@ -159,14 +159,42 @@ overlaps <- lines_sf %>% st_transform(crs = 3857) %>%
   st_join(trans_buff,
           join = st_intersects, 
           left = TRUE) %>%
+  filter(!(Transect==Buffer))
+
+overlapcount <- lines_sf %>% st_transform(crs = 3857) %>%
+  st_join(trans_buff,
+          join = st_intersects, 
+          left = TRUE) %>%
   group_by(Transect) %>%
   summarise(overlaps=length(unique(Buffer))) %>%
   arrange(desc(overlaps))
 
-include<-overlaps %>% filter(overlaps<3)
+
+#### REMOVE TRANSECTS ONE BY ONE AND RECALCULATE UNTIL BUFFER OVER LAP IS 0
+
+exclude<-overlapcount %>% filter(overlaps>4)
+
+for (xl in 1:50){
+  red_lines<-lines_sf %>% filter(!(Transect %in% exclude$Transect))
+  red_buff<-trans_buff %>% filter(!(Buffer %in% exclude$Transect))
+
+  overlapcount <- red_lines %>% st_transform(crs = 3857) %>%
+    st_join(red_buff,
+            join = st_intersects, 
+            left = TRUE) %>%
+    filter(!(Transect==Buffer)) %>%
+    group_by(Transect) %>%
+    summarise(overlaps=length(unique(Buffer))) %>%
+    filter(overlaps>1) %>%
+    arrange(desc(overlaps))
+  if(dim(overlapcount)[1]>0){exclude<-bind_rows(exclude,overlapcount[1,])}
+}
+
+  
+### REMOVE THE 25 OVERLAPPING TRANSECTS
 
 ALLDAT<-ALLDAT %>%
-  filter(Transect %in% include$Transect)
+  filter(!(Transect %in% exclude$Transect))
 
 
 
@@ -265,7 +293,7 @@ pan_rose_garden_lan <- pcount(~DAY+Daytime+as.factor(Wind) ~L+G+RA+P+Length, dat
 pan_rose_garden_lan_fern <- pcount(~DAY+Daytime+as.factor(Wind) ~L+F+G+RA+P+Length, data= PIRW_UMF, K=20,mixture="P",se=T)
 pan_rose_garden_lan_hib <- pcount(~DAY+Daytime+as.factor(Wind) ~L+H+G+RA+P+Length, data= PIRW_UMF, K=20,mixture="P",se=T)
 pan_rose_garden_lan_hib_fern <- pcount(~DAY+Daytime+as.factor(Wind) ~F+L+H+G+RA+P+Length, data= PIRW_UMF, K=20,mixture="P",se=T)
-full <- pcount(~DAY+Daytime+as.factor(Wind) ~F+H+L+G+RA+P+M+Length, data= PIRW_UMF, K=40,mixture="P",se=T)
+full <- pcount(~DAY+Daytime+as.factor(Wind) ~F+H+L+G+RA+P+M+Length, data= PIRW_UMF, K=20,mixture="P",se=T)
 pan_rose_garden_hib_fern <- pcount(~DAY+Daytime+as.factor(Wind) ~F+H+G+RA+P+M+Length, data= PIRW_UMF, K=20,mixture="P",se=T)
 
 
@@ -273,46 +301,46 @@ pan_rose_garden_hib_fern <- pcount(~DAY+Daytime+as.factor(Wind) ~F+H+G+RA+P+M+Le
 ### GOODNESS OF FIT TEST FOR FULL MODEL
 ### #################################################################################################
 ### this runs 40 min and yields c-hat = 1.31 and p =0.0002
-GOF<-Nmix.gof.test(full,nsim=5000)
+# GOF<-Nmix.gof.test(full,nsim=5000)
 
-
-# GOF from cornell lab of ornitology and the best practise for ebird data
-# (code from: https://doi90.github.io/lodestar/fitting-occupancy-models-with-unmarked.html)
-fitstats <- function(full, method = "nonparboot") {
-  observed <- getY(full@data)
-  expected <- fitted(full)
-  resids <- residuals(full, method = "nonparboot")
-  sse <- sum(resids^2, na.rm = TRUE)
-  chisq <- sum((observed - expected)^2 / expected, na.rm = TRUE)
-  freeTuke <- sum((sqrt(observed) - sqrt(expected))^2, na.rm = TRUE)
-  out <- c(SSE = sse, Chisq = chisq, freemanTukey = freeTuke)
-  return(out)}
-
-# calculation with unmarked::parboot
-(pb <- parboot(full, fitstats, nsim = 5000, report = TRUE, 
-               method = "nonparboot")) ## prob of 0.9 is ok
-
-
-
-# Call: parboot(object = full, statistic = fitstats, nsim = 5000, report = TRUE, method = "nonparboot")
 # 
-# Parametric Bootstrap Statistics:
-#   t0 mean(t0 - t_B) StdDev(t0 - t_B) Pr(t_B > t0)
-# SSE          946            203             73.1       0.0046
-# Chisq        502            120             28.9       0.0006
-# freemanTukey 188             36             10.6       0.0008
+# # GOF from cornell lab of ornitology and the best practise for ebird data
+# # (code from: https://doi90.github.io/lodestar/fitting-occupancy-models-with-unmarked.html)
+# fitstats <- function(full, method = "nonparboot") {
+#   observed <- getY(full@data)
+#   expected <- fitted(full)
+#   resids <- residuals(full, method = "nonparboot")
+#   sse <- sum(resids^2, na.rm = TRUE)
+#   chisq <- sum((observed - expected)^2 / expected, na.rm = TRUE)
+#   freeTuke <- sum((sqrt(observed) - sqrt(expected))^2, na.rm = TRUE)
+#   out <- c(SSE = sse, Chisq = chisq, freemanTukey = freeTuke)
+#   return(out)}
 # 
-# t_B quantiles:
-#   0% 2.5% 25% 50% 75% 97.5% 100%
-# SSE          519  610 693 741 792   896 1045
-# Chisq        289  330 362 381 400   442  600
-# freemanTukey 113  132 145 152 159   174  194
+# # calculation with unmarked::parboot
+# (pb <- parboot(full, fitstats, nsim = 5000, report = TRUE, 
+#                method = "nonparboot")) ## prob of 0.9 is ok
 # 
-# t0 = Original statistic computed from data
-# t_B = Vector of bootstrap samples
-
-
-### AIC MODEL TABLE COMPARING THESE MODELS 
+# 
+# 
+# # Call: parboot(object = full, statistic = fitstats, nsim = 5000, report = TRUE, method = "nonparboot")
+# # 
+# # Parametric Bootstrap Statistics:
+# #   t0 mean(t0 - t_B) StdDev(t0 - t_B) Pr(t_B > t0)
+# # SSE          946            203             73.1       0.0046
+# # Chisq        502            120             28.9       0.0006
+# # freemanTukey 188             36             10.6       0.0008
+# # 
+# # t_B quantiles:
+# #   0% 2.5% 25% 50% 75% 97.5% 100%
+# # SSE          519  610 693 741 792   896 1045
+# # Chisq        289  330 362 381 400   442  600
+# # freemanTukey 113  132 145 152 159   174  194
+# # 
+# # t0 = Original statistic computed from data
+# # t_B = Vector of bootstrap samples
+# 
+# 
+### AIC MODEL TABLE COMPARING THESE MODELS
 fl <- fitList(null,garden,fern,hibiscus,roseapple,lantana,pandanus,pan_rose,pan_rose_garden,pan_rose_garden_lan,pan_rose_garden_lan_fern,pan_rose_garden_lan_hib,pan_rose_garden_lan_hib_fern,full,pan_rose_garden_hib_fern)
 ms <- modSel(fl, nullmod="null")
 ms
@@ -505,7 +533,7 @@ HAB_PT_ABUND<-predict(full, type='state', newdat=HAB_PTS, appendData=F, SE=T) %>
 
 
 HAB_PT_ABUND
-HAB_PT_ABUND*(490/748)
+# HAB_PT_ABUND*(490/748)
 
 
 
@@ -516,7 +544,7 @@ HAB_PT_ABUND100<-predict(full, type='state', newdat=HAB_PTS, appendData=F, SE=T)
 
 
 HAB_PT_ABUND100
-HAB_PT_ABUND100*(490/748)
+# HAB_PT_ABUND100*(490/748)
 
 
 ### ADD SENSITIVITY ANALYSIS FOR DIFFERENT PROPORTION OF ADULT BIRDS ###
@@ -532,7 +560,14 @@ ad_props<-counts %>% filter(!is.na(Age)) %>% left_join(ALLDAT[,1:5], by="Landbir
   adorn_totals()
 ad_props[1,2:5]/ad_props[4,2:5]
 
-HAB_PT_ABUND100*ad_props[1,2:5]/ad_props[4,2:5]
+
+### CREATE ABUNDANCE OUTPUT TABLE
+ABUND_OUT<-expand.grid(ad_ratio=as.numeric((ad_props[1,2:5]/ad_props[4,2:5])), radius=c(50,100),N=0,lcl=0,ucl=0)
+ABUND_OUT[1:4,3:5]<-HAB_PT_ABUND
+ABUND_OUT[5:8,3:5]<-HAB_PT_ABUND100
+
+ABUND_OUT %>% mutate(ad_N=N*ad_ratio,ad_lcl=lcl*ad_ratio,ad_ucl=ucl*ad_ratio) %>%
+  arrange(radius,ad_N)
 
 
 
