@@ -21,6 +21,13 @@
 library(reshape)
 library(tidyverse)
 library(lubridate)
+
+library(maptools)
+library(sf)
+library(ggmap)
+library(ggsn)
+library(ggspatial)
+
 library(unmarked)
 library(geosphere)
 library(janitor)
@@ -86,17 +93,7 @@ head(transects)
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# SUBSAMPLE TRANSECTS THAT ARE 50 M APART
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-
-
-
-
-
-
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# CREATING A MATRIX WITH the count data in separate columns
+# FILL IN MISSING SURVEYS AND CREATE DATAFRAME WITH ALL DATA
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 head(surveys)
 
@@ -123,6 +120,61 @@ ALLDAT %>% filter(Effort<0)
 ALLDAT %>% ungroup() %>% group_by(Transect) %>%
   summarise(N=length(unique(LandbirdSurveyID))) %>%
   arrange(N)
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# SUBSAMPLE TRANSECTS THAT ARE 50 M APART
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+### create SF OBJECT
+
+transline<-ALLDAT %>% group_by(Transect) %>%
+  summarise(max=max(N_birds)) %>%
+  left_join(transects, by="Transect") %>%
+  arrange(Transect) %>%
+  select(Transect, Long_start,Lat_start,Long_end,Lat_end, max)
+
+# Create list of simple feature geometries (linestrings)
+l_sf <- vector("list", nrow(transline))
+for (i in seq_along(l_sf)){
+  l_sf[[i]] <- st_linestring(matrix(as.numeric(transline[i,2:5]), ncol=2, byrow=T))
+}
+
+# Create simple feature geometry by combining dataframe with geometry column
+l_sfc <- st_sfc(l_sf, crs = "+proj=longlat +datum=WGS84")
+lines_sf <- st_sf('Transect' = transline$Transect, 'geometry' = l_sfc) %>%
+  left_join(transline[,c(1,6)], by="Transect")
+str(lines_sf)
+st_crs(lines_sf)
+
+# Create a 50 m buffer around each transect
+trans_buff<- lines_sf %>% st_transform(crs = 3857) %>%
+  st_buffer(dist=50) %>%
+  rename(Buffer=Transect)
+
+# overlay transects with buffer and filter those transects with >1 buffer
+
+overlaps <- lines_sf %>% st_transform(crs = 3857) %>%
+  st_join(trans_buff,
+          join = st_intersects, 
+          left = TRUE) %>%
+  group_by(Transect) %>%
+  summarise(overlaps=length(unique(Buffer))) %>%
+  arrange(desc(overlaps))
+
+include<-overlaps %>% filter(overlaps<3)
+
+ALLDAT<-ALLDAT %>%
+  filter(Transect %in% include$Transect)
+
+
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# CREATING A MATRIX WITH the count data in separate columns
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 
 ### CAST THE DATA FRAME INTO MATRIX WITH 1 COLUMN PER (COUNT) 
 PIRW_y<- ALLDAT %>%
@@ -564,13 +616,6 @@ counts %>% filter(!is.na(Age)) %>%
 
 ### VERY COMPLICATED DUE TO MISMATCHING CRS between stamen map and sf objects
 ### found online workaround
-
-
-library(maptools)
-library(sf)
-library(ggmap)
-library(ggsn)
-library(ggspatial)
 
 ## DOWNLOAD MAP FOR BACKGROUND
 PITmap <- get_stamenmap(bbox = matrix(c(-130.125,-130.087,-25.082,-25.058),ncol=2,byrow=T),
