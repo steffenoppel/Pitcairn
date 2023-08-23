@@ -130,10 +130,13 @@ ALLDAT %>% ungroup() %>% group_by(Transect) %>%
 ### create SF OBJECT
 
 transline<-ALLDAT %>% group_by(Transect) %>%
-  summarise(max=max(N_birds)) %>%
+  summarise(max=max(N_birds), min=min(N_birds), var=var(N_birds)) %>%
   left_join(transects, by="Transect") %>%
   arrange(Transect) %>%
-  select(Transect, Long_start,Lat_start,Long_end,Lat_end, max)
+  select(Transect, Long_start,Lat_start,Long_end,Lat_end, max, min, var)
+
+transline %>% arrange(desc(var))
+
 
 # Create list of simple feature geometries (linestrings)
 l_sf <- vector("list", nrow(transline))
@@ -172,8 +175,8 @@ overlapcount <- lines_sf %>% st_transform(crs = 3857) %>%
 
 #### REMOVE TRANSECTS ONE BY ONE AND RECALCULATE UNTIL BUFFER OVER LAP IS 0
 
-exclude<-overlapcount %>% filter(overlaps>4)
-
+#exclude<-overlapcount %>% filter(overlaps>4)
+exclude<-overlapcount %>% filter(Transect %in% transline$Transect[transline$var>9])
 for (xl in 1:50){
   red_lines<-lines_sf %>% filter(!(Transect %in% exclude$Transect))
   red_buff<-trans_buff %>% filter(!(Buffer %in% exclude$Transect))
@@ -312,7 +315,7 @@ summary(full)
 ### #################################################################################################
 ### requires re-fitting model with K=30 to avoid mysterious error
 ### this runs 40 min and yields c-hat = 1.23 and p =0.026
-# GOF<-Nmix.gof.test(full,nsim=5000)
+GOF<-Nmix.gof.test(full,nsim=5000)
 
 # 
 # # GOF from cornell lab of ornitology and the best practise for ebird data
