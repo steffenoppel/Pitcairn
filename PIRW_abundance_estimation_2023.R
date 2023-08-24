@@ -177,7 +177,7 @@ overlapcount <- lines_sf %>% st_transform(crs = 3857) %>%
 
 #exclude<-overlapcount %>% filter(overlaps>4)
 exclude<-overlapcount %>% filter(Transect %in% transline$Transect[transline$var>9])
-for (xl in 1:50){
+for (xl in 1:40){
   red_lines<-lines_sf %>% filter(!(Transect %in% exclude$Transect))
   red_buff<-trans_buff %>% filter(!(Buffer %in% exclude$Transect))
 
@@ -304,7 +304,7 @@ fl <- fitList(null,garden,fern,hibiscus,roseapple,lantana,pandanus,pan_rose,pan_
 ms <- modSel(fl, nullmod="null")
 ms
 
-fwrite(ms@Full,"C:\\Users\\steffenoppel\\OneDrive - THE ROYAL SOCIETY FOR THE PROTECTION OF BIRDS\\STEFFEN\\MANUSCRIPTS\\in_prep\\PIRW\\TABLES1.csv")
+# fwrite(ms@Full,"C:\\Users\\steffenoppel\\OneDrive - THE ROYAL SOCIETY FOR THE PROTECTION OF BIRDS\\STEFFEN\\MANUSCRIPTS\\in_prep\\PIRW\\TABLES1.csv")
 # fwrite(ms@Full,"C:\\STEFFEN\\OneDrive - THE ROYAL SOCIETY FOR THE PROTECTION OF BIRDS\\STEFFEN\\MANUSCRIPTS\\in_prep\\PIRW\\TABLES1.csv")
 
 summary(full)
@@ -314,76 +314,75 @@ summary(full)
 ### GOODNESS OF FIT TEST FOR FULL MODEL
 ### #################################################################################################
 ### requires re-fitting model with K=30 to avoid mysterious error
-### this runs 40 min and yields c-hat = 1.23 and p =0.026
-GOF<-Nmix.gof.test(full,nsim=5000)
+#GOF<-Nmix.gof.test(full,nsim=2000)
 
-# 
-# # GOF from cornell lab of ornitology and the best practise for ebird data
-# # (code from: https://doi90.github.io/lodestar/fitting-occupancy-models-with-unmarked.html)
-# fitstats <- function(full, method = "nonparboot") {
-#   observed <- getY(full@data)
-#   expected <- fitted(full)
-#   resids <- residuals(full, method = "nonparboot")
-#   sse <- sum(resids^2, na.rm = TRUE)
-#   chisq <- sum((observed - expected)^2 / expected, na.rm = TRUE)
-#   freeTuke <- sum((sqrt(observed) - sqrt(expected))^2, na.rm = TRUE)
-#   out <- c(SSE = sse, Chisq = chisq, freemanTukey = freeTuke)
-#   return(out)}
-# 
-# # calculation with unmarked::parboot
-# (pb <- parboot(full, fitstats, nsim = 5000, report = TRUE,
-#                method = "nonparboot")) ## prob of 0.9 is ok
-# 
-# 
-# 
-# Call: parboot(object = full, statistic = fitstats, nsim = 5000, report = TRUE, method = "nonparboot")
+
+# GOF from cornell lab of ornitology and the best practise for ebird data
+# (code from: https://doi90.github.io/lodestar/fitting-occupancy-models-with-unmarked.html)
+fitstats <- function(full, method = "nonparboot") {
+  observed <- getY(full@data)
+  expected <- fitted(full)
+  resids <- residuals(full, method = "nonparboot")
+  sse <- sum(resids^2, na.rm = TRUE)
+  chisq <- sum((observed - expected)^2 / expected, na.rm = TRUE)
+  freeTuke <- sum((sqrt(observed) - sqrt(expected))^2, na.rm = TRUE)
+  out <- c(SSE = sse, Chisq = chisq, freemanTukey = freeTuke)
+  return(out)}
+
+# calculation with unmarked::parboot
+(pb <- parboot(full, fitstats, nsim = 5000, report = TRUE,
+               method = "nonparboot")) ## prob of 0.3 is ok
+# OUTPUT:
+#   parboot(object = full, statistic = fitstats, nsim = 5000, report = TRUE, method = "nonparboot")
 # 
 # Parametric Bootstrap Statistics:
-#   t0 mean(t0 - t_B) StdDev(t0 - t_B) Pr(t_B > t0)
-# SSE          515.9          121.2            55.53       0.0224
-# Chisq        253.5           47.3            22.84       0.0254
-# freemanTukey  96.2           14.7             7.94       0.0370
+#   t0 mean(t0 - t_B) StdDev(t0 - t_B)
+# SSE          343          13.85            46.60
+# Chisq        206          10.78            21.53
+# freemanTukey  87           9.27             7.53
+# Pr(t_B > t0)
+# SSE                 0.358
+# Chisq               0.294
+# freemanTukey        0.114
 # 
 # t_B quantiles:
 #   0% 2.5% 25% 50% 75% 97.5% 100%
-# SSE          230  296 357 390 430   513  670
-# Chisq        144  166 191 205 220   254  416
-# freemanTukey  55   67  76  81  87    98  113
+# SSE          195  249 296 326 359   430  525
+# Chisq        127  156 180 194 209   241  314
+# freemanTukey  53   63  73  77  83    93  109
 # 
 # t0 = Original statistic computed from data
 # t_B = Vector of bootstrap samples
+
+# #### ALTERNATIVE APPROACH USING QCV from DUARTE et al 2018
+# # fit GLMM
+# head(ALLDAT)
+# GOFdat<-ALLDAT %>%
+#   left_join(transects, by="Transect") %>% 
+#   mutate(Length = pmap(list(a = Long_start, 
+#                             b = Lat_start, 
+#                             x = Long_end,
+#                             y = Lat_end), 
+#                        ~ distRhumb(c(..1, ..2), c(..3, ..4)))) %>%
+#   mutate(Length=as.numeric(Length)) %>%
+#   mutate(DAY=scale(DAY)[,1]) %>%
+#   mutate(Daytime=scale(Daytime)[,1]) %>%
+#   mutate(Length=scale(Length)[,1]) %>%
+#   mutate(G=scale(G)[,1]) %>%
+#   mutate(RA=scale(RA)[,1]) %>%
+#   mutate(L=scale(L)[,1]) %>%
+#   mutate(B=scale(B)[,1]) %>%
+#   mutate(H=scale(H)[,1]) %>%
+#   mutate(F=scale(F)[,1]) 
 # 
 # 
-
-#### ALTERNATIVE APPROACH USING QCV from DUARTE et al 2018
-# fit GLMM
-head(ALLDAT)
-GOFdat<-ALLDAT %>%
-  left_join(transects, by="Transect") %>% 
-  mutate(Length = pmap(list(a = Long_start, 
-                            b = Lat_start, 
-                            x = Long_end,
-                            y = Lat_end), 
-                       ~ distRhumb(c(..1, ..2), c(..3, ..4)))) %>%
-  mutate(Length=as.numeric(Length)) %>%
-  mutate(DAY=scale(DAY)[,1]) %>%
-  mutate(Daytime=scale(Daytime)[,1]) %>%
-  mutate(Length=scale(Length)[,1]) %>%
-  mutate(G=scale(G)[,1]) %>%
-  mutate(RA=scale(RA)[,1]) %>%
-  mutate(L=scale(L)[,1]) %>%
-  mutate(B=scale(B)[,1]) %>%
-  mutate(H=scale(H)[,1]) %>%
-  mutate(F=scale(F)[,1]) 
-
-
-library(lme4)
-meanCount=round(mean(as.vector(GOFdat$N_birds)),digits=4)
-mixedModel=glmer(N_birds~1+Length+Daytime+DAY+G+RA+H+L+(1|Transect),data=GOFdat,family="poisson")
-resVar=round(attr(VarCorr(mixedModel)$Transect,"stddev")^2,digits=4) # extract the residual variance
-quasiCV=round(sqrt(resVar)/meanCount,digits=4) # quasi coefficient of variation
-quasiCV
-
+# library(lme4)
+# meanCount=round(mean(as.vector(GOFdat$N_birds)),digits=4)
+# mixedModel=glmer(N_birds~1+Length+Daytime+DAY+G+RA+H+L+(1|Transect),data=GOFdat,family="poisson")
+# resVar=round(attr(VarCorr(mixedModel)$Transect,"stddev")^2,digits=4) # extract the residual variance
+# quasiCV=round(sqrt(resVar)/meanCount,digits=4) # quasi coefficient of variation
+# quasiCV
+# 
 # mixedModel=lmer(N_birds~1+Length+Daytime+DAY+G+RA+H+L+(1|Transect),data=GOFdat,REML=F)
 # resVar=round(attr(VarCorr(mixedModel),"sc")^2,digits=4) # extract the residual variance
 # quasiCV=round(sqrt(resVar)/meanCount,digits=4) # quasi coefficient of variation
@@ -628,6 +627,7 @@ fwrite(export,"PIRW_predicted_density.csv")
 ### create SF object for abundance prediction
 abund_sf<-st_as_sf(ABUND_MAP,coords = c("Long_start","Lat_start"))
 st_crs(abund_sf)<-st_crs(lines_sf)
+range(abund_sf$dens_mean)
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -653,7 +653,7 @@ ggmap(base) +
   geom_sf(data = st_transform(nests_sf, 3857), color= "darkblue", size=2,
           inherit.aes = F) +
   
-  scale_color_gradient(name = 'Predicted Reed Warbler \n density (ind per ha)', low="white", high="red", guide = "colourbar", limits=c(0.05, 8.1))+
+  scale_color_gradient(name = 'Predicted Reed Warbler \n density (ind per ha)', low="white", high="red", guide = "colourbar", limits=range(abund_sf$dens_mean))+
   
   ### ADD PREDICTED ABUNDANCE SCALE
   #scale_colour_gradient(name = "PIRW \n abundance (ind / ha)", low="grey", high="red", guide = "colourbar", limits=c(0, 20))+
