@@ -304,6 +304,7 @@ ms
 
 # fwrite(ms@Full,"C:\\Users\\steffenoppel\\OneDrive - THE ROYAL SOCIETY FOR THE PROTECTION OF BIRDS\\STEFFEN\\MANUSCRIPTS\\in_prep\\PIRW\\TABLES1.csv")
 # fwrite(ms@Full,"C:\\STEFFEN\\OneDrive - THE ROYAL SOCIETY FOR THE PROTECTION OF BIRDS\\STEFFEN\\MANUSCRIPTS\\in_prep\\PIRW\\TABLES1.csv")
+fwrite(ms@Full,"C:/Users/sop/Documents/Steffen/RSPB/Pitcairn/Manuscript/TABLES1.csv")
 
 summary(full)
 
@@ -501,6 +502,18 @@ ABUND_TABLE<-predict(full, type='state', newdat=HAB_PTS, appendData=T, SE=T) %>%
 ### NUMBERS NEEDED FOR MANUSCRIPT
 ### #################################################################################################
 
+### estimates
+
+full@estimates@estimates[[1]]@estimates
+
+## CREATE TABLE 1
+TABLE1<-data.frame(Habitat=names(coef(full, type='state')),
+                   mean=coef(full, type='state'),
+                   se=SE(full, type='state')) %>%
+  mutate(Parameter=paste(round(mean,2)," (± ",round(se,2),")", sep="")) %>%
+  arrange(desc(mean))
+TABLE1
+fwrite(TABLE1,"C:/Users/sop/Documents/Steffen/RSPB/Pitcairn/Manuscript/TABLE1.csv")
 
 ### number of surveys
 dim(ALLDAT)
@@ -703,6 +716,7 @@ ggmap(base) +
         panel.border = element_blank())
 
 
-ggsave("C:\\STEFFEN\\OneDrive - THE ROYAL SOCIETY FOR THE PROTECTION OF BIRDS\\STEFFEN\\MANUSCRIPTS\\in_prep\\PIRW\\PIRW_density_map.jpg", width=12, height=8, quality=100)
+#ggsave("C:\\STEFFEN\\OneDrive - THE ROYAL SOCIETY FOR THE PROTECTION OF BIRDS\\STEFFEN\\MANUSCRIPTS\\in_prep\\PIRW\\PIRW_density_map.jpg", width=12, height=8, quality=100)
+ggsave("PIRW_density_map.jpg", width=12, height=8, quality=100)
 
 save.image("PIRW_final_analysis.RData")
