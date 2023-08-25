@@ -200,8 +200,6 @@ ALLDAT<-ALLDAT %>%
   filter(!(Transect %in% exclude$Transect))
 
 
-
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # CREATING A MATRIX WITH the count data in separate columns
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -470,13 +468,14 @@ HAB_PT_ABUND100
 ## calculate ratio for each survey round
 
 ### proportion of adult birds
-ad_props<-counts %>% filter(!is.na(Age)) %>% left_join(ALLDAT[,1:5], by="LandbirdSurveyID") %>%
+ad_props<-counts %>% filter(!is.na(Age)) %>% left_join(ALLDAT[,1:5], by="LandbirdSurveyID") %>% filter(!is.na(Count)) %>%
   mutate(Age=tolower(Age)) %>%
   mutate(Age=ifelse(Age=="f","fled",Age)) %>%
   group_by(Age,Count) %>%
   summarise(N=sum(N_birds)) %>%
-  spread(key=Count, value=N) %>%
-  adorn_totals()
+  spread(key=Count, value=N, fill=0) %>%
+  adorn_totals("col") %>%
+  adorn_totals("row")
 ad_props[1,2:5]/ad_props[4,2:5]
 
 
@@ -485,10 +484,6 @@ ABUND_OUT<-expand.grid(ad_ratio=as.numeric((ad_props[1,2:5]/ad_props[4,2:5])), r
 ABUND_OUT[1:4,3:5]<-HAB_PT_ABUND
 ABUND_OUT[5:8,3:5]<-HAB_PT_ABUND100
 
-ABUND_OUT %>% mutate(ad_N=N*ad_ratio,ad_lcl=lcl*ad_ratio,ad_ucl=ucl*ad_ratio) %>%
-  arrange(radius,ad_N)
-
-
 
 ## INCLUDE PARAMETER ESTIMATES IN TABLE 2
 ABUND_TABLE<-predict(full, type='state', newdat=HAB_PTS, appendData=T, SE=T) %>%
@@ -496,9 +491,7 @@ ABUND_TABLE<-predict(full, type='state', newdat=HAB_PTS, appendData=T, SE=T) %>%
   select(Transect,P,RA,L,H,G, F,dens_mean, dens_lcl,dens_ucl) %>%
   arrange(desc(dens_mean))
 
-ABUND_TABLE %>% filter(RA==0)
-ABUND_TABLE %>% filter(P>0.9)
-ABUND_TABLE %>% filter(H>0.5)
+
 
 
 
@@ -507,6 +500,16 @@ ABUND_TABLE %>% filter(H>0.5)
 ### #################################################################################################
 ### NUMBERS NEEDED FOR MANUSCRIPT
 ### #################################################################################################
+
+
+### number of surveys
+dim(ALLDAT)
+
+### mean number of birds
+mean(ALLDAT$N_birds)
+
+### total per survey round
+ALLDAT %>% group_by(Count) %>% summarise(N=sum(N_birds))
 
 ### duration of surveys
 summary(ALLDAT$Effort)
@@ -518,11 +521,23 @@ summary(ALLDAT$N_birds)
 summary(surveys$Date)
 
 ### proportion of adult birds
-counts %>% filter(!is.na(Age)) %>%
-  group_by(Age) %>%
-  summarise(N=sum(N_birds)) %>%
-  adorn_totals()
-490/748
+ad_props
+
+### density in rose apple
+ABUND_TABLE %>% filter(RA==1)
+
+### density in pandanus
+ABUND_TABLE %>% filter(P>0.9)
+
+### density in fern
+ABUND_TABLE %>% filter(F>0.9)
+
+
+#### TOTAL ESTIMATED AND EXTRAPOLATED
+
+ABUND_OUT %>% mutate(ad_N=N*ad_ratio,ad_lcl=lcl*ad_ratio,ad_ucl=ucl*ad_ratio) %>%
+  arrange(radius,ad_N) %>%
+  mutate(across(3:8, round,0))
 
 
 
@@ -690,4 +705,4 @@ ggmap(base) +
 
 ggsave("C:\\STEFFEN\\OneDrive - THE ROYAL SOCIETY FOR THE PROTECTION OF BIRDS\\STEFFEN\\MANUSCRIPTS\\in_prep\\PIRW\\PIRW_density_map.jpg", width=12, height=8, quality=100)
 
-
+save.image("PIRW_final_analysis.RData")
