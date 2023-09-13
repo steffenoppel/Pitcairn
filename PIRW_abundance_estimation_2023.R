@@ -313,7 +313,7 @@ summary(full)
 ### GOODNESS OF FIT TEST FOR FULL MODEL
 ### #################################################################################################
 ### requires re-fitting model with K=30 to avoid mysterious error
-#GOF<-Nmix.gof.test(full,nsim=2000)
+#GOF<-Nmix.gof.test(full,nsim=1000)
 
 
 # GOF from cornell lab of ornitology and the best practise for ebird data
@@ -657,6 +657,11 @@ abund_sf<-st_as_sf(ABUND_MAP,coords = c("Long_start","Lat_start"))
 st_crs(abund_sf)<-st_crs(lines_sf)
 range(abund_sf$dens_mean)
 
+
+##EXPORT FOR MAP MAKING IN GIS
+st_write(abund_sf, dsn = "PIRW_density.shp", layer = "PIRW_density.shp", driver = "ESRI Shapefile")
+st_write(lines_sf, dsn = "PIRW_transects.shp", layer = "PIRW_transects.shp", driver = "ESRI Shapefile")
+st_write(lines_sf, dsn = "PIRW_nests.shp", layer = "PIRW_nests.shp", driver = "ESRI Shapefile")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # PLOT TRANSECTS AND NESTS ON A MAP
